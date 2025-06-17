@@ -32,7 +32,7 @@ class Task {
 
 class TaskManager {
     public function loadTasks(): array {
-        $file = 'tasks.json';
+        $file = 'data/tasks.json';
         if (!file_exists($file)) {
             return [];
         }
@@ -75,7 +75,7 @@ class TaskManager {
         }
 
         // LOCK_EX ensures only one write at a time, prevents corruption
-        $result = file_put_contents('tasks.json', $json, LOCK_EX);
+        $result = file_put_contents('data/tasks.json', $json, LOCK_EX);
         if ($result === false) {
             throw new RuntimeException("Failed to write tasks to file");
         }
