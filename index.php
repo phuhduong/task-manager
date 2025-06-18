@@ -56,7 +56,7 @@ function renderTaskRow(Task $task, string $statusOptionsHTML): string {
     $html = '';
     $html .= '<tr data-id="' . $task->id . '">';
     $html .= '<td>' . $task->id . '</td>';
-    $html .= '<td>' . e($task->name) . '</td>';
+    $html .= '<td><input class="nameInput" type="text" value="' . e($task->name) . '"></td>';
     $html .= '<td>' . $task->status->value . '</td>';
     $html .= '<td>' . $task->creationDate->format('Y-m-d H:i') . '</td>';
     $html .= '<td><select class="statusSelect">' . $options . '</select></td>';
@@ -102,6 +102,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $rows[] = renderTaskRow($t, $statusOptionsHTML);
             }
             echo json_encode(['success' => true, 'html' => implode('', $rows)]);
+
+        } elseif ($action === 'rename' && isset($_POST['id'], $_POST['name'])) {
+            $taskManager->renameTask((int)$_POST['id'], trim($_POST['name']));
+            echo json_encode(['success' => true]);
 
         } else {
             echo json_encode(['success' => false, 'message' => 'Invalid request']);
@@ -201,11 +205,32 @@ function attachHandlers() {
             });
         };
     });
+
+    document.querySelectorAll('.nameInput').forEach(function (input) {
+        input.addEventListener('blur', function () {
+            const row = input.closest('tr');
+            const id = row.dataset.id;
+            const name = input.value.trim();
+
+            const data = new FormData();
+            data.append('action', 'rename');
+            data.append('id', id);
+            data.append('name', name);
+
+            sendForm(data, function () {
+                // Optionally provide user feedback
+                row.classList.add('updated');
+                setTimeout(() => row.classList.remove('updated'), 500);
+            });
+        });
+    });
 }
 
 document.getElementById('addTaskForm').onsubmit = function (e) {
     e.preventDefault();
-    const name = this.name.value;
+    const name = this.name.value.trim();
+    if (name === '') return;
+
     const data = new FormData();
     data.append('action', 'add');
     data.append('name', name);
@@ -216,10 +241,13 @@ document.getElementById('addTaskForm').onsubmit = function (e) {
         row.dataset.id = task.id;
         row.innerHTML = `
             <td>${task.id}</td>
-            <td>${task.name}</td>
+            <td><input class="nameInput" type="text" value="${task.name}"></td>
             <td>${task.status}</td>
             <td>${task.creationDate}</td>
-            <td><select class="statusSelect">${statusOptions}</select></td>
+            <td><select class="statusSelect">${statusOptions.replace(
+                `value="${task.status}"`,
+                `value="${task.status}" selected`
+            )}</select></td>
             <td><button class="deleteBtn">Delete</button></td>
         `;
         document.querySelector('#taskTable tbody').appendChild(row);

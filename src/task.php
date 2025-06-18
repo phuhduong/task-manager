@@ -19,7 +19,7 @@ enum TaskStatus: string {
 class Task {
     public function __construct(
         #[NotEmpty("Task name cannot be empty")]
-        public readonly string $name,
+        public string $name,
 
         #[NonNegative("Task ID cannot be negative")]
         public readonly int $id, 
@@ -63,7 +63,6 @@ class TaskManager {
                 'status' => $task->status->value,
                 'creationDate' => $task->creationDate->format(DateTimeInterface::ATOM)
             ];
-
         }
 
         // JSON_PRETTY_PRINT makes json file more readable for debugging
@@ -102,6 +101,22 @@ class TaskManager {
         $this->saveTasks($tasks);
 
         return $newTask;
+    }
+
+    public function renameTask(int $id, string $name): void {
+        if ($id < 0) {
+            throw new InvalidArgumentException("Task ID must be a non-negative integer");
+        }
+
+        $tasks = iterator_to_array($this->loadTasks());
+
+        foreach ($tasks as $task) {
+            if ($task->id === $id) {
+                $task->name = $name;
+                $this->saveTasks($tasks);
+                return;
+            }
+        }
     }
 
     public function updateTaskStatus(int $id, TaskStatus $status): void {
