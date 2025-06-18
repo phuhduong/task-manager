@@ -180,6 +180,7 @@ function sendForm(data, onSuccess) {
         });
 }
 
+// Handlers
 function attachHandlers() {
     document.querySelectorAll('.deleteBtn').forEach(function (btn) {
         btn.onclick = function () {
@@ -216,12 +217,6 @@ function attachHandlers() {
             data.append('action', 'rename');
             data.append('id', id);
             data.append('name', name);
-
-            sendForm(data, function () {
-                // Optionally provide user feedback
-                row.classList.add('updated');
-                setTimeout(() => row.classList.remove('updated'), 500);
-            });
         });
     });
 }
