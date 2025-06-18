@@ -1,11 +1,18 @@
 <?php
 declare(strict_types=1);
-
 require 'src/task.php';
 
+// Helpers
 function post($key) {
     if (isset($_POST[$key])) {
         return $_POST[$key];
+    }
+    return '';
+}
+
+function get($key) {
+    if (isset($_GET[$key])) {
+        return $_GET[$key];
     }
     return '';
 }
@@ -17,18 +24,58 @@ function selected($current, $option) {
     return '';
 }
 
+function e($str) {
+    return htmlspecialchars($str, ENT_QUOTES, 'UTF-8');
+}
+
+// Generate status options HTML
+$statusOptionsHTML = '';
+foreach (TaskStatus::cases() as $status) {
+    $value = $status->value;
+    $statusOptionsHTML .= '<option value="' . $value . '">' . $value . '</option>';
+}
+
+// Logic to filter tasks by status
+function filterTasks(array $tasks, string $status): array {
+    return match ($status) {
+        'Pending'     => array_filter($tasks, fn($t) => $t->status === TaskStatus::PENDING),
+        'In Progress' => array_filter($tasks, fn($t) => $t->status === TaskStatus::IN_PROGRESS),
+        'Completed'   => array_filter($tasks, fn($t) => $t->status === TaskStatus::COMPLETED),
+        default       => $tasks,
+    };
+}
+
+// Render task row HTML
+function renderTaskRow(Task $task, string $statusOptionsHTML): string {
+    $options = str_replace(
+        'value="' . $task->status->value . '"',
+        'value="' . $task->status->value . '" selected',
+        $statusOptionsHTML
+    );
+
+    $html = '';
+    $html .= '<tr data-id="' . $task->id . '">';
+    $html .= '<td>' . $task->id . '</td>';
+    $html .= '<td>' . e($task->name) . '</td>';
+    $html .= '<td>' . $task->status->value . '</td>';
+    $html .= '<td>' . $task->creationDate->format('Y-m-d H:i') . '</td>';
+    $html .= '<td><select class="statusSelect">' . $options . '</select></td>';
+    $html .= '<td><button class="deleteBtn">Delete</button></td>';
+    $html .= '</tr>';
+    return $html;
+}
+
+// App logic
 $taskManager = new TaskManager();
 
-// Handle AJAX POST
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     header('Content-Type: application/json');
-
     try {
         $action = post('action');
 
         if ($action === 'add' && isset($_POST['name'])) {
             $task = $taskManager->addTask(trim($_POST['name']));
-            echo json_encode([
+            $response = [
                 'success' => true,
                 'task' => [
                     'id' => $task->id,
@@ -36,13 +83,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     'status' => $task->status->value,
                     'creationDate' => $task->creationDate->format('Y-m-d H:i')
                 ]
-            ]);
+            ];
+            echo json_encode($response);
+
         } elseif ($action === 'delete' && isset($_POST['id'])) {
             $taskManager->deleteTask((int)$_POST['id']);
             echo json_encode(['success' => true]);
+
         } elseif ($action === 'update' && isset($_POST['id'], $_POST['status'])) {
             $taskManager->updateTaskStatus((int)$_POST['id'], TaskStatus::from($_POST['status']));
             echo json_encode(['success' => true]);
+
+        } elseif ($action === 'filter' && isset($_POST['status'])) {
+            $allTasks = iterator_to_array($taskManager->loadTasks());
+            $filtered = filterTasks($allTasks, $_POST['status']);
+            $rows = [];
+            foreach ($filtered as $t) {
+                $rows[] = renderTaskRow($t, $statusOptionsHTML);
+            }
+            echo json_encode(['success' => true, 'html' => implode('', $rows)]);
+
         } else {
             echo json_encode(['success' => false, 'message' => 'Invalid request']);
         }
@@ -50,34 +110,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } catch (Exception $e) {
         echo json_encode(['success' => false, 'message' => $e->getMessage()]);
     }
-
     exit;
 }
 
-$tasksGenerator = $taskManager->loadTasks();
-$allTasks = [];
-foreach ($tasksGenerator as $task) {
-    $allTasks[] = $task;
-}
-
-// Filter by status using match
-$statusFilter = '';
-if (isset($_GET['status'])) {
-    $statusFilter = $_GET['status'];
-}
-
-$tasks = match ($statusFilter) {
-    'Pending' => array_filter($allTasks, function ($task) {
-        return $task->status === TaskStatus::PENDING;
-    }),
-    'In Progress' => array_filter($allTasks, function ($task) {
-        return $task->status === TaskStatus::IN_PROGRESS;
-    }),
-    'Completed' => array_filter($allTasks, function ($task) {
-        return $task->status === TaskStatus::COMPLETED;
-    }),
-    default => $allTasks,
-};
+// Initial load
+$allTasks = iterator_to_array($taskManager->loadTasks());
+$statusFilter = get('status');
+$tasks = filterTasks($allTasks, $statusFilter);
 ?>
 
 <!DOCTYPE html>
@@ -91,113 +130,117 @@ $tasks = match ($statusFilter) {
 
 <h1>Task Manager</h1>
 
-<!-- Status Filter -->
-<form method="get" id="statusFilterForm">
-    <label for="status">Filter by status:</label>
-    <select name="status" id="status" onchange="this.form.submit()">
-        <option value="">-- All --</option>
-        <option value="Pending" <?= selected($statusFilter, 'Pending') ?>>Pending</option>
-        <option value="In Progress" <?= selected($statusFilter, 'In Progress') ?>>In Progress</option>
-        <option value="Completed" <?= selected($statusFilter, 'Completed') ?>>Completed</option>
-    </select>
-</form>
+<label for="statusFilter">Filter by Status:</label>
+<select id="statusFilter">
+    <option value="">All</option>
+    <?php
+    foreach (TaskStatus::cases() as $status) {
+        echo '<option value="' . $status->value . '">' . $status->value . '</option>';
+    }
+    ?>
+</select>
 
-<!-- Add Task Form -->
 <form id="addTaskForm">
     <input type="text" name="name" placeholder="New task name" required>
     <button type="submit">Add</button>
 </form>
 
-<!-- Task Table -->
 <table id="taskTable">
     <thead>
         <tr>
-            <th>ID</th>
-            <th>Name</th>
-            <th>Status</th>
-            <th>Created</th>
-            <th>Update</th>
-            <th>Delete</th>
+            <th>ID</th><th>Name</th><th>Status</th><th>Created</th><th>Update</th><th>Delete</th>
         </tr>
     </thead>
     <tbody>
-        <?php foreach ($tasks as $task): ?>
-            <tr data-id="<?= $task->id ?>">
-                <td><?= $task->id ?></td>
-                <td><?= htmlspecialchars($task->name) ?></td>
-                <td><?= $task->status->value ?></td>
-                <td><?= $task->creationDate->format('Y-m-d H:i') ?></td>
-
-                <td>
-                    <select class="statusSelect">
-                        <?php foreach (TaskStatus::cases() as $status): ?>
-                            <option value="<?= $status->value ?>" <?= selected($task->status, $status) ?>>
-                                <?= $status->value ?>
-                            </option>
-                        <?php endforeach; ?>
-                    </select>
-                </td>
-
-                <td><button class="deleteBtn">Delete</button></td>
-            </tr>
-        <?php endforeach; ?>
+        <?php
+        foreach ($tasks as $task) {
+            echo renderTaskRow($task, $statusOptionsHTML);
+        }
+        ?>
     </tbody>
 </table>
 
 <script>
+const statusOptions = `<?= $statusOptionsHTML ?>`;
+
+// AJAX Form Submission
 function sendForm(data, onSuccess) {
     fetch('', { method: 'POST', body: data })
-        .then(res => res.json())
-        .then(json => {
-            if (json.success && typeof onSuccess === 'function') {
+        .then(function (res) {
+            return res.json();
+        })
+        .then(function (json) {
+            if (json.success) {
                 onSuccess(json);
             }
         });
 }
 
-// Add Task
-document.getElementById('addTaskForm').addEventListener('submit', function(e) {
-    e.preventDefault();
+function attachHandlers() {
+    document.querySelectorAll('.deleteBtn').forEach(function (btn) {
+        btn.onclick = function () {
+            const row = btn.closest('tr');
+            const data = new FormData();
+            data.append('action', 'delete');
+            data.append('id', row.dataset.id);
+            sendForm(data, function () {
+                row.remove();
+            });
+        };
+    });
 
+    document.querySelectorAll('.statusSelect').forEach(function (select) {
+        select.onchange = function () {
+            const row = select.closest('tr');
+            const data = new FormData();
+            data.append('action', 'update');
+            data.append('id', row.dataset.id);
+            data.append('status', select.value);
+            sendForm(data, function () {
+                row.cells[2].textContent = select.value;
+            });
+        };
+    });
+}
+
+document.getElementById('addTaskForm').onsubmit = function (e) {
+    e.preventDefault();
     const name = this.name.value;
     const data = new FormData();
     data.append('action', 'add');
     data.append('name', name);
 
-    sendForm(data, () => location.reload());
-});
-
-// Delete Task
-document.querySelectorAll('.deleteBtn').forEach(btn => {
-    btn.addEventListener('click', function() {
-        const row = this.closest('tr');
-        const id = row.dataset.id;
-
-        const data = new FormData();
-        data.append('action', 'delete');
-        data.append('id', id);
-
-        sendForm(data, () => row.remove());
+    sendForm(data, function (json) {
+        const task = json.task;
+        const row = document.createElement('tr');
+        row.dataset.id = task.id;
+        row.innerHTML = `
+            <td>${task.id}</td>
+            <td>${task.name}</td>
+            <td>${task.status}</td>
+            <td>${task.creationDate}</td>
+            <td><select class="statusSelect">${statusOptions}</select></td>
+            <td><button class="deleteBtn">Delete</button></td>
+        `;
+        document.querySelector('#taskTable tbody').appendChild(row);
+        attachHandlers();
+        document.getElementById('addTaskForm').reset();
     });
-});
+};
 
-// Update Task
-document.querySelectorAll('.statusSelect').forEach(select => {
-    select.addEventListener('change', function () {
-        const row = this.closest('tr');
-        const id = row.dataset.id;
-        const status = this.value;
+document.getElementById('statusFilter').onchange = function () {
+    const data = new FormData();
+    data.append('action', 'filter');
+    data.append('status', this.value);
 
-        const data = new FormData();
-        data.append('action', 'update');
-        data.append('id', id);
-        data.append('status', status);
-
-        sendForm(data, () => {
-            row.cells[2].textContent = status;
-        });
+    sendForm(data, function (json) {
+        const tbody = document.querySelector('#taskTable tbody');
+        tbody.innerHTML = json.html;
+        attachHandlers();
     });
-});
+};
+
+attachHandlers();
 </script>
 
 </body>
