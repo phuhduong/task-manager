@@ -31,7 +31,7 @@ class Task {
 }
 
 class TaskManager {
-    public function loadTasks(): array {
+    public function loadTasks(): iterable {
         $file = 'data/tasks.json';
         if (!file_exists($file)) {
             return [];
@@ -45,15 +45,13 @@ class TaskManager {
 
         $tasks = [];
         foreach ($data as $item) {
-            $tasks[] = new Task(
+            yield new Task(
                 name: $item['name'],
                 id: $item['id'],
                 status: TaskStatus::from($item['status']),
                 creationDate: new DateTimeImmutable($item['creationDate'])
             );
         }
-
-        return $tasks;
     }
 
     public function saveTasks(array $tasks): void {
@@ -86,7 +84,7 @@ class TaskManager {
             throw new InvalidArgumentException("Task name cannot be empty");
         }
 
-        $tasks = $this->loadTasks();
+        $tasks = iterator_to_array($this->loadTasks());
 
         $ids = [];
         foreach ($tasks as $task) {
@@ -111,7 +109,7 @@ class TaskManager {
             throw new InvalidArgumentException("Task ID must be a non-negative integer");
         }
         
-        $tasks = $this->loadTasks();
+        $tasks = iterator_to_array($this->loadTasks());
 
         foreach ($tasks as $task) {
             if ($task->id === $id) {
@@ -129,7 +127,7 @@ class TaskManager {
             throw new InvalidArgumentException("Task ID must be a non-negative integer");
         }
 
-        $tasks = $this->loadTasks();
+        $tasks = iterator_to_array($this->loadTasks());
 
         foreach($tasks as $key => $task) {
             if($task->id === $id) {
@@ -147,9 +145,7 @@ class TaskManager {
             throw new InvalidArgumentException("Task ID must be a non-negative integer");
         }
 
-        $tasks = $this->loadTasks();
-
-        foreach($tasks as $task) {
+        foreach ($this->loadTasks() as $task) {
             if($task->id === $id) {
                 return $task;
             }

@@ -54,7 +54,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     exit;
 }
 
-$tasks = $taskManager->loadTasks();
+$tasksGenerator = $taskManager->loadTasks();
+$allTasks = [];
+foreach ($tasksGenerator as $task) {
+    $allTasks[] = $task;
+}
 
 // Filter by status using match
 $statusFilter = '';
@@ -63,16 +67,16 @@ if (isset($_GET['status'])) {
 }
 
 $tasks = match ($statusFilter) {
-    'Pending' => array_filter($tasks, function ($task) {
+    'Pending' => array_filter($allTasks, function ($task) {
         return $task->status === TaskStatus::PENDING;
     }),
-    'In Progress' => array_filter($tasks, function ($task) {
+    'In Progress' => array_filter($allTasks, function ($task) {
         return $task->status === TaskStatus::IN_PROGRESS;
     }),
-    'Completed' => array_filter($tasks, function ($task) {
+    'Completed' => array_filter($allTasks, function ($task) {
         return $task->status === TaskStatus::COMPLETED;
     }),
-    default => $tasks,
+    default => $allTasks,
 };
 ?>
 
