@@ -1,4 +1,6 @@
 <?php
+declare(strict_types=1);
+
 require 'src/task.php';
 
 function post($key) {
@@ -53,6 +55,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 $tasks = $taskManager->loadTasks();
+
+// Filter by status using match
+$statusFilter = '';
+if (isset($_GET['status'])) {
+    $statusFilter = $_GET['status'];
+}
+
+$tasks = match ($statusFilter) {
+    'Pending' => array_filter($tasks, function ($task) {
+        return $task->status === TaskStatus::PENDING;
+    }),
+    'In Progress' => array_filter($tasks, function ($task) {
+        return $task->status === TaskStatus::IN_PROGRESS;
+    }),
+    'Completed' => array_filter($tasks, function ($task) {
+        return $task->status === TaskStatus::COMPLETED;
+    }),
+    default => $tasks,
+};
 ?>
 
 <!DOCTYPE html>
@@ -65,6 +86,17 @@ $tasks = $taskManager->loadTasks();
 <body>
 
 <h1>Task Manager</h1>
+
+<!-- Status Filter -->
+<form method="get" id="statusFilterForm">
+    <label for="status">Filter by status:</label>
+    <select name="status" id="status" onchange="this.form.submit()">
+        <option value="">-- All --</option>
+        <option value="Pending" <?= selected($statusFilter, 'Pending') ?>>Pending</option>
+        <option value="In Progress" <?= selected($statusFilter, 'In Progress') ?>>In Progress</option>
+        <option value="Completed" <?= selected($statusFilter, 'Completed') ?>>Completed</option>
+    </select>
+</form>
 
 <!-- Add Task Form -->
 <form id="addTaskForm">
@@ -109,7 +141,6 @@ $tasks = $taskManager->loadTasks();
 </table>
 
 <script>
-// Helper to send form data via POST
 function sendForm(data, onSuccess) {
     fetch('', { method: 'POST', body: data })
         .then(res => res.json())

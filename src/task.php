@@ -11,9 +11,9 @@ class NonNegative {
 }
 
 enum TaskStatus: string {
-    case PENDING = 'pending';
-    case IN_PROGRESS = 'in-progress';
-    case COMPLETED = 'completed';
+    case PENDING = 'Pending';
+    case IN_PROGRESS = 'In Progress';
+    case COMPLETED = 'Completed';
 }
 
 class Task {
