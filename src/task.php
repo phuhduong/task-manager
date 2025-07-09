@@ -22,7 +22,7 @@ class Task {
         public string $name,
 
         #[NonNegative("Task ID cannot be negative")]
-        public readonly int $id, 
+        public readonly int $id,
 
         public TaskStatus $status = TaskStatus::PENDING,
 
@@ -31,7 +31,10 @@ class Task {
 }
 
 class TaskManager {
-    public function loadTasks(): iterable {
+    /**
+     * @throws Exception
+     */
+    public function loadTasks(): Generator {
         $file = 'data/tasks.json';
         if (!file_exists($file)) {
             return [];
@@ -43,7 +46,6 @@ class TaskManager {
             throw new RuntimeException("Invalid task data format");
         }
 
-        $tasks = [];
         foreach ($data as $item) {
             yield new Task(
                 name: $item['name'],
@@ -65,13 +67,16 @@ class TaskManager {
             ];
         }
 
-        // JSON_PRETTY_PRINT makes json file more readable for debugging
+        $dir = dirname('data/tasks.json');
+        if (!is_dir($dir)) {
+            mkdir($dir, 0755, true);
+        }
+
         $json = json_encode($data, JSON_PRETTY_PRINT);
         if ($json === false) {
             throw new RuntimeException("Failed to encode tasks to .json");
         }
 
-        // LOCK_EX ensures only one write at a time, prevents corruption
         $result = file_put_contents('data/tasks.json', $json, LOCK_EX);
         if ($result === false) {
             throw new RuntimeException("Failed to write tasks to file");
@@ -79,9 +84,7 @@ class TaskManager {
     }
 
     public function addTask(string $name): Task {
-        if (empty($name)) {
-            throw new InvalidArgumentException("Task name cannot be empty");
-        }
+        TaskValidator::validateTaskName($name);
 
         $tasks = iterator_to_array($this->loadTasks());
 
@@ -104,9 +107,8 @@ class TaskManager {
     }
 
     public function renameTask(int $id, string $name): void {
-        if ($id < 0) {
-            throw new InvalidArgumentException("Task ID must be a non-negative integer");
-        }
+        TaskValidator::validateTaskId($id);
+        TaskValidator::validateTaskName($name);
 
         $tasks = iterator_to_array($this->loadTasks());
 
@@ -120,10 +122,8 @@ class TaskManager {
     }
 
     public function updateTaskStatus(int $id, TaskStatus $status): void {
-        if ($id < 0) {
-            throw new InvalidArgumentException("Task ID must be a non-negative integer");
-        }
-        
+        TaskValidator::validateTaskId($id);
+
         $tasks = iterator_to_array($this->loadTasks());
 
         foreach ($tasks as $task) {
@@ -138,9 +138,7 @@ class TaskManager {
     }
 
     public function deleteTask(int $id): void {
-        if ($id < 0) {
-            throw new InvalidArgumentException("Task ID must be a non-negative integer");
-        }
+        TaskValidator::validateTaskId($id);
 
         $tasks = iterator_to_array($this->loadTasks());
 
@@ -156,9 +154,7 @@ class TaskManager {
     }
 
     public function getTaskById(int $id): Task {
-        if ($id < 0) {
-            throw new InvalidArgumentException("Task ID must be a non-negative integer");
-        }
+        TaskValidator::validateTaskId($id);
 
         foreach ($this->loadTasks() as $task) {
             if($task->id === $id) {
@@ -170,25 +166,24 @@ class TaskManager {
 }
 
 class TaskValidator {
-    public static function validateTask(Task $task): void {
-        $reflection = new ReflectionClass($task);
+    public static function validateTaskName(string $name): void {
+        if (empty(trim($name))) {
+            throw new InvalidArgumentException("Task name cannot be empty");
+        }
 
-        foreach ($reflection->getProperties() as $property) {
-            $attributes = $property->getAttributes();
-
-            foreach ($attributes as $attribute) {
-                $attrInstance = $attribute->newInstance();
-                $value = $property->getValue($task);
-
-                if ($attrInstance instanceof NotEmpty && empty($value)) {
-                    throw new InvalidArgumentException($attrInstance->message);
-                }
-                if ($attrInstance instanceof NonNegative && $value < 0) {
-                    throw new InvalidArgumentException($attrInstance->message);
-                }
-            }
+        if (strlen($name) > 255) {
+            throw new InvalidArgumentException("Task name cannot exceed 255 characters");
         }
     }
-}
 
-?>
+    public static function validateTaskId(int $id): void {
+        if ($id < 0) {
+            throw new InvalidArgumentException("Task ID cannot be negative");
+        }
+    }
+
+    public static function validateTask(Task $task): void {
+        self::validateTaskName($task->name);
+        self::validateTaskId($task->id);
+    }
+}
