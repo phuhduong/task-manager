@@ -1,6 +1,9 @@
 <?php
-declare(strict_types=1);
-require_once __DIR__ . '/../src/task.php';
+require_once __DIR__ . '/../vendor/autoload.php';
+
+use App\Enums\TaskStatus;
+use App\TaskManager;
+use App\Constants\TaskConstants;
 
 // Assert helper
 function assertEquals($expected, $actual, $message): void {
@@ -12,7 +15,7 @@ function assertEquals($expected, $actual, $message): void {
 }
 
 // Clear existing task data
-file_put_contents(__DIR__ . '/../data/tasks.json', json_encode([]));
+file_put_contents(TaskConstants::TASKS_FILE, json_encode([]));
 
 $manager = new TaskManager();
 
@@ -35,5 +38,3 @@ try {
 } catch (RuntimeException $e) {
     echo "PASS: Delete task - exception thrown as expected\n";
 }
-
-?>

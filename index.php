@@ -1,6 +1,9 @@
 <?php
-declare(strict_types=1);
-require 'src/task.php';
+require_once __DIR__ . '/vendor/autoload.php';
+
+use App\Enums\TaskStatus;
+use App\Task;
+use App\TaskManager;
 
 // Helpers
 function post($key) {
@@ -128,7 +131,7 @@ $tasks = filterTasks($allTasks, $statusFilter);
 <head>
     <meta charset="UTF-8">
     <title>Task Manager</title>
-    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
@@ -145,7 +148,9 @@ $tasks = filterTasks($allTasks, $statusFilter);
 </select>
 
 <form id="addTaskForm">
-    <input type="text" name="name" placeholder="New task name" required>
+    <label>
+        <input type="text" name="name" placeholder="New task name" required>
+    </label>
     <button type="submit">Add</button>
 </form>
 

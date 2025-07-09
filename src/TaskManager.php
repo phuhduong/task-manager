@@ -1,46 +1,24 @@
 <?php
+namespace App;
 
-#[Attribute]
-class NotEmpty {
-    public function __construct(public string $message = "Value cannot be empty") {}
-}
-
-#[Attribute]
-class NonNegative {
-    public function __construct(public string $message = "Value cannot be negative") {}
-}
-
-enum TaskStatus: string {
-    case PENDING = 'Pending';
-    case IN_PROGRESS = 'In Progress';
-    case COMPLETED = 'Completed';
-}
-
-class Task {
-    public function __construct(
-        #[NotEmpty("Task name cannot be empty")]
-        public string $name,
-
-        #[NonNegative("Task ID cannot be negative")]
-        public readonly int $id,
-
-        public TaskStatus $status = TaskStatus::PENDING,
-
-        public readonly DateTimeImmutable $creationDate
-    ) {}
-}
+use App\Enums\TaskStatus;
+use App\Constants\TaskConstants;
+use DateTimeImmutable;
+use DateTimeInterface;
+use Exception;
+use Generator;
+use RuntimeException;
 
 class TaskManager {
     /**
      * @throws Exception
      */
     public function loadTasks(): Generator {
-        $file = 'data/tasks.json';
-        if (!file_exists($file)) {
-            return [];
+        if (!file_exists(TaskConstants::TASKS_FILE)) {
+            return;
         }
 
-        $json = file_get_contents($file);
+        $json = file_get_contents(TaskConstants::TASKS_FILE);
         $data = json_decode($json, true);
         if (!is_array($data)) {
             throw new RuntimeException("Invalid task data format");
@@ -67,7 +45,7 @@ class TaskManager {
             ];
         }
 
-        $dir = dirname('data/tasks.json');
+        $dir = dirname(TaskConstants::TASKS_FILE);
         if (!is_dir($dir)) {
             mkdir($dir, 0755, true);
         }
@@ -77,12 +55,15 @@ class TaskManager {
             throw new RuntimeException("Failed to encode tasks to .json");
         }
 
-        $result = file_put_contents('data/tasks.json', $json, LOCK_EX);
+        $result = file_put_contents(TaskConstants::TASKS_FILE, $json, LOCK_EX);
         if ($result === false) {
             throw new RuntimeException("Failed to write tasks to file");
         }
     }
 
+    /**
+     * @throws Exception
+     */
     public function addTask(string $name): Task {
         TaskValidator::validateTaskName($name);
 
@@ -106,6 +87,9 @@ class TaskManager {
         return $newTask;
     }
 
+    /**
+     * @throws Exception
+     */
     public function renameTask(int $id, string $name): void {
         TaskValidator::validateTaskId($id);
         TaskValidator::validateTaskName($name);
@@ -121,6 +105,9 @@ class TaskManager {
         }
     }
 
+    /**
+     * @throws Exception
+     */
     public function updateTaskStatus(int $id, TaskStatus $status): void {
         TaskValidator::validateTaskId($id);
 
@@ -137,6 +124,9 @@ class TaskManager {
         throw new RuntimeException("Task with ID $id not found");
     }
 
+    /**
+     * @throws Exception
+     */
     public function deleteTask(int $id): void {
         TaskValidator::validateTaskId($id);
 
@@ -145,7 +135,7 @@ class TaskManager {
         foreach($tasks as $key => $task) {
             if($task->id === $id) {
                 unset($tasks[$key]);
-                $this->saveTasks(array_values($tasks)); // Reindexes array
+                $this->saveTasks(array_values($tasks)); // Reindex array
                 return;
             }
         }
@@ -153,6 +143,9 @@ class TaskManager {
         throw new RuntimeException("Task with ID $id not found");
     }
 
+    /**
+     * @throws Exception
+     */
     public function getTaskById(int $id): Task {
         TaskValidator::validateTaskId($id);
 
@@ -162,28 +155,5 @@ class TaskManager {
             }
         }
         throw new RuntimeException("Task with ID $id not found");
-    }
-}
-
-class TaskValidator {
-    public static function validateTaskName(string $name): void {
-        if (empty(trim($name))) {
-            throw new InvalidArgumentException("Task name cannot be empty");
-        }
-
-        if (strlen($name) > 255) {
-            throw new InvalidArgumentException("Task name cannot exceed 255 characters");
-        }
-    }
-
-    public static function validateTaskId(int $id): void {
-        if ($id < 0) {
-            throw new InvalidArgumentException("Task ID cannot be negative");
-        }
-    }
-
-    public static function validateTask(Task $task): void {
-        self::validateTaskName($task->name);
-        self::validateTaskId($task->id);
     }
 }
