@@ -38,10 +38,10 @@ class TaskManager {
         $data = [];
         foreach ($tasks as $task) {
             $data[] = [
-                'id' => $task->id,
-                'name' => $task->name,
-                'status' => $task->status->value,
-                'creationDate' => $task->creationDate->format(DateTimeInterface::ATOM)
+                'id' => $task->getId(),
+                'name' => $task->getName(),
+                'status' => $task->getStatus()->value,
+                'creationDate' => $task->getCreationDate()->format(DateTimeInterface::ATOM)
             ];
         }
 
@@ -71,7 +71,7 @@ class TaskManager {
 
         $ids = [];
         foreach ($tasks as $task) {
-            $ids[] = $task->id;
+            $ids[] = $task->getId();
         }
         if (count($ids) === 0) {
             $nextId = 1;
@@ -97,8 +97,8 @@ class TaskManager {
         $tasks = iterator_to_array($this->loadTasks());
 
         foreach ($tasks as $task) {
-            if ($task->id === $id) {
-                $task->name = $name;
+            if ($task->getId() === $id) {
+                $task->setName($name);
                 $this->saveTasks($tasks);
                 return;
             }
@@ -114,8 +114,8 @@ class TaskManager {
         $tasks = iterator_to_array($this->loadTasks());
 
         foreach ($tasks as $task) {
-            if ($task->id === $id) {
-                $task->status = $status;
+            if ($task->getId() === $id) {
+                $task->setStatus($status);
                 $this->saveTasks($tasks);
                 return;
             }
@@ -133,7 +133,7 @@ class TaskManager {
         $tasks = iterator_to_array($this->loadTasks());
 
         foreach($tasks as $key => $task) {
-            if($task->id === $id) {
+            if($task->getId() === $id) {
                 unset($tasks[$key]);
                 $this->saveTasks(array_values($tasks)); // Reindex array
                 return;
@@ -150,10 +150,11 @@ class TaskManager {
         TaskValidator::validateTaskId($id);
 
         foreach ($this->loadTasks() as $task) {
-            if($task->id === $id) {
+            if($task->getId() === $id) {
                 return $task;
             }
         }
+
         throw new RuntimeException("Task with ID $id not found");
     }
 }

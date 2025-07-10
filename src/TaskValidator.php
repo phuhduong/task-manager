@@ -22,7 +22,7 @@ class TaskValidator {
     }
 
     public static function validateTask(Task $task): void {
-        self::validateTaskName($task->name);
-        self::validateTaskId($task->id);
+        self::validateTaskName($task->getName());
+        self::validateTaskId($task->getId());
     }
 }

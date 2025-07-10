@@ -41,9 +41,9 @@ foreach (TaskStatus::cases() as $status) {
 // Logic to filter tasks by status
 function filterTasks(array $tasks, string $status): array {
     return match ($status) {
-        'Pending'     => array_filter($tasks, fn($t) => $t->status === TaskStatus::PENDING),
-        'In Progress' => array_filter($tasks, fn($t) => $t->status === TaskStatus::IN_PROGRESS),
-        'Completed'   => array_filter($tasks, fn($t) => $t->status === TaskStatus::COMPLETED),
+        'Pending'     => array_filter($tasks, fn($t) => $t->getStatus() === TaskStatus::PENDING),
+        'In Progress' => array_filter($tasks, fn($t) => $t->getStatus() === TaskStatus::IN_PROGRESS),
+        'Completed'   => array_filter($tasks, fn($t) => $t->getStatus() === TaskStatus::COMPLETED),
         default       => $tasks,
     };
 }
@@ -51,20 +51,19 @@ function filterTasks(array $tasks, string $status): array {
 // Render task row HTML
 function renderTaskRow(Task $task, string $statusOptionsHTML): string {
     $options = str_replace(
-        'value="' . $task->status->value . '"',
-        'value="' . $task->status->value . '" selected',
+        'value="' . $task->getStatus()->value . '"',
+        'value="' . $task->getStatus()->value . '" selected',
         $statusOptionsHTML
     );
 
     $html = '';
-    $html .= '<tr data-id="' . $task->id . '">';
-    $html .= '<td>' . $task->id . '</td>';
-    $html .= '<td><input class="nameInput" type="text" value="' . e($task->name) . '"></td>';
-    $html .= '<td>' . $task->status->value . '</td>';
-    $html .= '<td>' . $task->creationDate->format('Y-m-d H:i') . '</td>';
+    $html .= '<tr data-id="' . $task->getId() . '">';
+    $html .= '<td>' . $task->getId() . '</td>';
+    $html .= '<td><input class="nameInput" type="text" value="' . e($task->getName()) . '"></td>';
+    $html .= '<td>' . $task->getStatus()->value . '</td>';
+    $html .= '<td>' . $task->getCreationDate()->format('Y-m-d H:i') . '</td>';
     $html .= '<td><select class="statusSelect">' . $options . '</select></td>';
     $html .= '<td><button class="deleteBtn">Delete</button></td>';
-    $html .= '</tr>';
     return $html;
 }
 
@@ -81,10 +80,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $response = [
                 'success' => true,
                 'task' => [
-                    'id' => $task->id,
-                    'name' => $task->name,
-                    'status' => $task->status->value,
-                    'creationDate' => $task->creationDate->format('Y-m-d H:i')
+                    'id' => $task->getId(),
+                    'name' => $task->getName(),
+                    'status' => $task->getStatus()->value,
+                    'creationDate' => $task->getCreationDate()->format('Y-m-d H:i')
                 ]
             ];
             echo json_encode($response);
@@ -156,90 +155,85 @@ $tasks = filterTasks($allTasks, $statusFilter);
 
 <table id="taskTable">
     <thead>
-        <tr>
-            <th>ID</th><th>Name</th><th>Status</th><th>Created</th><th>Update</th><th>Delete</th>
-        </tr>
+    <tr>
+        <th>ID</th><th>Name</th><th>Status</th><th>Created</th><th>Update</th><th>Delete</th>
+    </tr>
     </thead>
     <tbody>
-        <?php
-        foreach ($tasks as $task) {
-            echo renderTaskRow($task, $statusOptionsHTML);
-        }
-        ?>
+    <?php
+    foreach ($tasks as $task) {
+        echo renderTaskRow($task, $statusOptionsHTML);
+    }
+    ?>
     </tbody>
 </table>
 
 <script>
-const statusOptions = `<?= $statusOptionsHTML ?>`;
+    const statusOptions = `<?= $statusOptionsHTML ?>`;
 
-// AJAX Form Submission
-function sendForm(data, onSuccess) {
-    fetch('', { method: 'POST', body: data })
-        .then(function (res) {
-            return res.json();
-        })
-        .then(function (json) {
-            if (json.success) {
-                onSuccess(json);
-            }
-        });
-}
-
-// Handlers
-function attachHandlers() {
-    document.querySelectorAll('.deleteBtn').forEach(function (btn) {
-        btn.onclick = function () {
-            const row = btn.closest('tr');
-            const data = new FormData();
-            data.append('action', 'delete');
-            data.append('id', row.dataset.id);
-            sendForm(data, function () {
-                row.remove();
+    function sendForm(data, onSuccess) {
+        fetch('', { method: 'POST', body: data })
+            .then(res => res.json())
+            .then(json => {
+                if (json.success) {
+                    onSuccess(json);
+                }
             });
-        };
-    });
+    }
 
-    document.querySelectorAll('.statusSelect').forEach(function (select) {
-        select.onchange = function () {
-            const row = select.closest('tr');
-            const data = new FormData();
-            data.append('action', 'update');
-            data.append('id', row.dataset.id);
-            data.append('status', select.value);
-            sendForm(data, function () {
-                row.cells[2].textContent = select.value;
-            });
-        };
-    });
-
-    document.querySelectorAll('.nameInput').forEach(function (input) {
-        input.addEventListener('blur', function () {
-            const row = input.closest('tr');
-            const id = row.dataset.id;
-            const name = input.value.trim();
-
-            const data = new FormData();
-            data.append('action', 'rename');
-            data.append('id', id);
-            data.append('name', name);
+    function attachHandlers() {
+        document.querySelectorAll('.deleteBtn').forEach(btn => {
+            btn.onclick = function () {
+                const row = btn.closest('tr');
+                const data = new FormData();
+                data.append('action', 'delete');
+                data.append('id', row.dataset.id);
+                sendForm(data, () => row.remove());
+            };
         });
-    });
-}
 
-document.getElementById('addTaskForm').onsubmit = function (e) {
-    e.preventDefault();
-    const name = this.name.value.trim();
-    if (name === '') return;
+        document.querySelectorAll('.statusSelect').forEach(select => {
+            select.onchange = function () {
+                const row = select.closest('tr');
+                const data = new FormData();
+                data.append('action', 'update');
+                data.append('id', row.dataset.id);
+                data.append('status', select.value);
+                sendForm(data, () => {
+                    row.cells[2].textContent = select.value;
+                });
+            };
+        });
 
-    const data = new FormData();
-    data.append('action', 'add');
-    data.append('name', name);
+        document.querySelectorAll('.nameInput').forEach(input => {
+            input.addEventListener('blur', function () {
+                const row = input.closest('tr');
+                const id = row.dataset.id;
+                const name = input.value.trim();
 
-    sendForm(data, function (json) {
-        const task = json.task;
-        const row = document.createElement('tr');
-        row.dataset.id = task.id;
-        row.innerHTML = `
+                const data = new FormData();
+                data.append('action', 'rename');
+                data.append('id', id);
+                data.append('name', name);
+                sendForm(data, () => {});
+            });
+        });
+    }
+
+    document.getElementById('addTaskForm').onsubmit = function (e) {
+        e.preventDefault();
+        const name = this.name.value.trim();
+        if (name === '') return;
+
+        const data = new FormData();
+        data.append('action', 'add');
+        data.append('name', name);
+
+        sendForm(data, function (json) {
+            const task = json.task;
+            const row = document.createElement('tr');
+            row.dataset.id = task.id;
+            row.innerHTML = `
             <td>${task.id}</td>
             <td><input class="nameInput" type="text" value="${task.name}"></td>
             <td>${task.status}</td>
@@ -250,25 +244,25 @@ document.getElementById('addTaskForm').onsubmit = function (e) {
             )}</select></td>
             <td><button class="deleteBtn">Delete</button></td>
         `;
-        document.querySelector('#taskTable tbody').appendChild(row);
-        attachHandlers();
-        document.getElementById('addTaskForm').reset();
-    });
-};
+            document.querySelector('#taskTable tbody').appendChild(row);
+            attachHandlers();
+            document.getElementById('addTaskForm').reset();
+        });
+    };
 
-document.getElementById('statusFilter').onchange = function () {
-    const data = new FormData();
-    data.append('action', 'filter');
-    data.append('status', this.value);
+    document.getElementById('statusFilter').onchange = function () {
+        const data = new FormData();
+        data.append('action', 'filter');
+        data.append('status', this.value);
 
-    sendForm(data, function (json) {
-        const tbody = document.querySelector('#taskTable tbody');
-        tbody.innerHTML = json.html;
-        attachHandlers();
-    });
-};
+        sendForm(data, function (json) {
+            const tbody = document.querySelector('#taskTable tbody');
+            tbody.innerHTML = json.html;
+            attachHandlers();
+        });
+    };
 
-attachHandlers();
+    attachHandlers();
 </script>
 
 </body>
