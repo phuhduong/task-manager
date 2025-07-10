@@ -2,16 +2,11 @@
 namespace App;
 
 use InvalidArgumentException;
-use App\Constants\TaskConstants;
 
 class TaskValidator {
     public static function validateTaskName(string $name): void {
         if (empty(trim($name))) {
             throw new InvalidArgumentException("Task name cannot be empty");
-        }
-
-        if (strlen($name) > TaskConstants::MAX_TASK_NAME_LENGTH) {
-            throw new InvalidArgumentException("Task name cannot exceed 255 characters");
         }
     }
 
