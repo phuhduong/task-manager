@@ -14,6 +14,15 @@ function assertEquals($expected, $actual, $message): void {
     }
 }
 
+// Ensure the data directory exists
+$dir = dirname(TaskConstants::TASKS_FILE);
+if (!is_dir($dir)) {
+    mkdir($dir, 0755, true);
+}
+
+// Clear existing task data
+file_put_contents(TaskConstants::TASKS_FILE, json_encode([]));
+
 // Clear existing task data
 file_put_contents(TaskConstants::TASKS_FILE, json_encode([]));
 
