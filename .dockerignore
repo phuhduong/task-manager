@@ -4,6 +4,5 @@
 .vscode/
 /vendor/
 .env
-.env.*
 Dockerfile
 docker-compose.yml
