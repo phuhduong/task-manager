@@ -9,12 +9,12 @@ use DateTimeImmutable;
 class Task {
     public function __construct(
         #[NotEmpty("Task name cannot be empty")]
-        private string $name,
+        private readonly string $name,
 
         #[NonNegative("Task ID cannot be negative")]
         private readonly int $id,
 
-        private TaskStatus $status = TaskStatus::PENDING,
+        private readonly TaskStatus $status = TaskStatus::PENDING,
 
         private readonly DateTimeImmutable $creationDate
     ) {}
@@ -33,14 +33,6 @@ class Task {
 
     public function getCreationDate(): DateTimeImmutable {
         return $this->creationDate;
-    }
-
-    public function setName(string $name): void {
-        $this->name = $name;
-    }
-
-    public function setStatus(TaskStatus $status): void {
-        $this->status = $status;
     }
 
 }
