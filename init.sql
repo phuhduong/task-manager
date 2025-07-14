@@ -1,3 +1,5 @@
+\c task_manager
+
 CREATE TYPE task_status AS ENUM ('Pending', 'In Progress', 'Completed');
 
 CREATE TABLE tasks (
