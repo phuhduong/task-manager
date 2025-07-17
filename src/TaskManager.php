@@ -26,8 +26,8 @@ class TaskManager {
             $tasks[] = new Task(
                 name: $row['name'],
                 id: (int)$row['id'],
-                status: TaskStatus::from($row['status']),
-                creationDate: new DateTimeImmutable($row['creation_date'])
+                creationDate: new DateTimeImmutable($row['creation_date']),
+                status: TaskStatus::from($row['status'])
             );
         }
 
@@ -50,7 +50,7 @@ class TaskManager {
         ]);
         $id = $stmt->fetchColumn();
 
-        $task = new Task($name, $id, TaskStatus::PENDING, $now);
+        $task = new Task($name, $id, $now);
         TaskValidator::validateTask($task);
 
         return $task;
@@ -107,8 +107,8 @@ class TaskManager {
         return new Task(
             name: $row['name'],
             id: (int)$row['id'],
-            status: TaskStatus::from($row['status']),
-            creationDate: new DateTimeImmutable($row['creation_date'])
+            creationDate: new DateTimeImmutable($row['creation_date']),
+            status: TaskStatus::from($row['status'])
         );
     }
 }
