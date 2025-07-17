@@ -14,9 +14,9 @@ class Task {
         #[NonNegative("Task ID cannot be negative")]
         private readonly int $id,
 
-        private readonly TaskStatus $status = TaskStatus::PENDING,
+        private readonly DateTimeImmutable $creationDate,
 
-        private readonly DateTimeImmutable $creationDate
+        private readonly TaskStatus $status = TaskStatus::PENDING
     ) {}
 
     public function getName(): string {
