@@ -22,6 +22,12 @@ jobs:
       - name: Build and start containers
         run: docker compose up -d --build
 
+      - name: Wait for DB to be ready
+        run: |
+          until docker compose exec -T db pg_isready -U task_user; do 
+            sleep 2
+          done
+
       - name: Run tests
         run: docker compose exec -T app php tests/tests.php
 
