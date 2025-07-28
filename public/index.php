@@ -1,13 +1,13 @@
 <?php
-require_once __DIR__ . '/vendor/autoload.php';
+require_once __DIR__ . '/../vendor/autoload.php';
 
 use App\Enums\TaskStatus;
-use App\Task;
-use App\TaskManager;
+use App\Models\Task;
+use App\Services\TaskManager;
 use Dotenv\Dotenv;
 
 // Load environment & connect to DB
-$dotenv = Dotenv::createImmutable(__DIR__);
+$dotenv = Dotenv::createImmutable(__DIR__ . '/../');
 $dotenv->load();
 $pdo = new PDO(
     "pgsql:host={$_ENV['DB_HOST']};port={$_ENV['DB_PORT']};dbname={$_ENV['DB_NAME']}",

@@ -2,7 +2,7 @@
 require_once __DIR__ . '/../vendor/autoload.php';
 
 use App\Enums\TaskStatus;
-use App\TaskManager;
+use App\Services\TaskManager;
 use Dotenv\Dotenv;
 
 // Simple assertion helper

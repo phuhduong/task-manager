@@ -1,5 +1,5 @@
 <?php
-namespace App;
+namespace App\Models;
 
 use App\Attributes\NonNegative;
 use App\Attributes\NotEmpty;

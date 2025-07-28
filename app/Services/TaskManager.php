@@ -1,7 +1,9 @@
 <?php
-namespace App;
+namespace App\Services;
 
 use App\Enums\TaskStatus;
+use App\Models\Task;
+use App\Validators\TaskValidator;
 use DateTimeImmutable;
 use Exception;
 use PDO;
